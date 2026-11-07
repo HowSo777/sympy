@@ -323,7 +323,11 @@ def _eigenvals_dict(
         return all_eigs
     if not isinstance(simplify, FunctionType):
         simplify = _simplify
-    return {simplify(key): value for key, value in all_eigs.items()}
+    res: dict[Expr, int] = {}
+    for key, value in all_eigs.items():
+        skey = simplify(key)
+        res[skey] = res.get(skey, 0) + value
+    return res
 
 
 def _eigenspace(
@@ -366,7 +370,7 @@ def _eigenvects_sympy(
         simplify: bool | Callable[[Expr], Expr] = True,
         **flags: Any,
     ) -> list[tuple[Expr, int, list[Tmat]]]:
-    eigenvals = M.eigenvals(rational=False, **flags)
+    eigenvals = M.eigenvals(rational=False, simplify=simplify, **flags)
 
     # Make sure that we have all roots in radical form
     for x in eigenvals:
@@ -1275,6 +1279,18 @@ def _jordan_form(M: Tmat,
 
     # first calculate the jordan block structure
     eigs = mat.eigenvals()
+    merged_eigs: dict[Expr, int] = {}
+    for k, v in eigs.items():
+        found = False
+        for mk in merged_eigs:
+            diff = k - mk
+            if diff == 0 or getattr(diff, 'is_zero', False) or _iszero(diff) or _iszero(_simplify(diff)):
+                merged_eigs[mk] += v
+                found = True
+                break
+        if not found:
+            merged_eigs[k] = v
+    eigs = merged_eigs
 
     # Make sure that we have all roots in radical form
     for x in eigs:
@@ -1293,11 +1309,11 @@ def _jordan_form(M: Tmat,
         if not calc_transform:
             return restore_floats1(jordan_mat)
 
-        jordan_basis = [eig_mat(eig, 1).nullspace()[0]
-                for eig in blocks]
+        jordan_basis = [ns[0] for eig in blocks if (ns := eig_mat(eig, 1).nullspace())]
         basis_mat    = mat.hstack(*jordan_basis)
 
-        return restore_floats2(basis_mat, jordan_mat)
+        if len(jordan_basis) == mat.cols and basis_mat.rank() == mat.cols:
+            return restore_floats2(basis_mat, jordan_mat)
 
     block_structure = []
 

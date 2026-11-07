@@ -807,3 +807,27 @@ def test_issue_28793():
     P, J = A.jordan_form()
     assert P.det() == 16*sqrt(2)
     assert expand(P*J*P.inv()) == expand(A)
+
+
+def test_eigenvals_simplification_preserves_multiplicity():
+    x = Symbol("x")
+    a = sin(x)**2
+    matrix = Matrix.diag(a, a, 1 - cos(x)**2, 7)
+    assert matrix.eigenvals(simplify=True) == {sin(x)**2: 3, S(7): 1}
+    assert len(matrix.eigenvals(simplify=True, multiple=True)) == 4
+    assert matrix.eigenvals(simplify=True, multiple=True) == [sin(x)**2, sin(x)**2, sin(x)**2, S(7)]
+
+
+def test_eigenvals_simplify_multiplicity_and_jordan():
+    x = Symbol('x')
+    M_diag = Matrix([[sin(x)**2, 0], [0, 1 - cos(x)**2]])
+    assert M_diag.eigenvals(simplify=True) == {sin(x)**2: 2}
+    assert len(M_diag.eigenvals(simplify=True, multiple=True)) == 2
+
+    M_jordan = Matrix([[sin(x)**2, 1], [0, 1 - cos(x)**2]])
+    assert M_jordan.is_diagonalizable() is False
+    P, J = M_jordan.jordan_form()
+    assert simplify(P.det()) != 0
+    assert simplify(M_jordan * P - P * J) == Matrix.zeros(2, 2)
+
+
