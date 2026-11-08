@@ -1,0 +1,17 @@
+# ==============================================================================
+# Match Zero · SymPy Issue #30900 Dependencies Specification
+# ==============================================================================
+
+# 1. Core SymPy Runtime (Pure Python Mathematical Kernel)
+# SymPy is designed with zero mandatory external C dependencies.
+# mpmath is the only required dependency for arbitrary-precision floating-point arithmetic.
+mpmath>=1.1.0
+
+# 2. Testing, Static Analysis & Continuous Integration
+pytest>=7.4.0
+hypothesis>=6.80.0
+ruff>=0.1.0
+
+# 3. Interactive Judge Web Inspector & Visual Presentation Prototype
+streamlit>=1.30.0
+pandas>=2.0.0
