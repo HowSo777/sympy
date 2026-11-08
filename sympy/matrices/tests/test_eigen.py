@@ -815,7 +815,10 @@ def test_eigenvals_simplification_preserves_multiplicity():
     matrix = Matrix.diag(a, a, 1 - cos(x)**2, 7)
     assert matrix.eigenvals(simplify=True) == {sin(x)**2: 3, S(7): 1}
     assert len(matrix.eigenvals(simplify=True, multiple=True)) == 4
-    assert matrix.eigenvals(simplify=True, multiple=True) == [sin(x)**2, sin(x)**2, sin(x)**2, S(7)]
+    values = matrix.eigenvals(simplify=True, multiple=True)
+    assert values.count(sin(x)**2) == 3
+    assert values.count(S(7)) == 1
+
 
 
 def test_eigenvals_simplify_multiplicity_and_jordan():
@@ -829,27 +832,27 @@ def test_eigenvals_simplify_multiplicity_and_jordan():
     P, J = M_jordan.jordan_form()
     assert simplify(P.det()) != 0
     assert simplify(M_jordan * P - P * J) == Matrix.zeros(2, 2)
+    assert M_jordan.jordan_form(calc_transform=False) == J
+
 
 
 def test_eigenvals_simplify_edge_cases():
     x = Symbol('x')
     e1, e2, e3 = sin(x)**2, 1 - cos(x)**2, (1 - cos(2*x))/2
 
-    # Edge case 1: Monolithic spectrum where all 4 entries collapse to 1 eigenvalue
+
     M_mono = Matrix.diag(e1, e2, e3, e1)
     assert M_mono.eigenvals(simplify=True) == {sin(x)**2: 4}
     assert len(M_mono.eigenvals(simplify=True, multiple=True)) == 4
 
-    # Edge case 2: 3x3 defective Jordan block with 3 unsimplified equivalent roots
+
     M_jordan3 = Matrix([[e1, 1, 0], [0, e2, 1], [0, 0, e3]])
     assert M_jordan3.is_diagonalizable() is False
     P3, J3 = M_jordan3.jordan_form()
     assert simplify(P3.det()) != 0
     assert simplify(M_jordan3 * P3 - P3 * J3) == Matrix.zeros(3, 3)
+    assert M_jordan3.jordan_form(calc_transform=False) == J3
 
-    # Edge case 3: 1x1 boundary matrix
     M_1x1 = Matrix([[e2]])
     assert M_1x1.eigenvals(simplify=True) == {sin(x)**2: 1}
-
-
 

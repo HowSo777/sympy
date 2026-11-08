@@ -1280,16 +1280,14 @@ def _jordan_form(M: Tmat,
     # first calculate the jordan block structure
     eigs = mat.eigenvals()
     merged_eigs: dict[Expr, int] = {}
-    for k, v in eigs.items():
-        found = False
-        for mk in merged_eigs:
-            diff = k - mk
-            if diff == 0 or getattr(diff, 'is_zero', False) or _iszero(diff) or _iszero(_simplify(diff)):
-                merged_eigs[mk] += v
-                found = True
+    for eigenvalue, multiplicity in eigs.items():
+        for existing in merged_eigs:
+            if _iszero(_simplify(eigenvalue - existing)) is True:
+                merged_eigs[existing] += multiplicity
                 break
-        if not found:
-            merged_eigs[k] = v
+        else:
+            merged_eigs[eigenvalue] = multiplicity
+
     eigs = merged_eigs
 
     # Make sure that we have all roots in radical form
@@ -1309,11 +1307,17 @@ def _jordan_form(M: Tmat,
         if not calc_transform:
             return restore_floats1(jordan_mat)
 
-        jordan_basis = [ns[0] for eig in blocks if (ns := eig_mat(eig, 1).nullspace())]
-        basis_mat    = mat.hstack(*jordan_basis)
+        jordan_basis = []
+        for eig in blocks:
+            basis = eig_mat(eig, 1).nullspace()
+            if basis:
+                jordan_basis.append(basis[0])
 
-        if len(jordan_basis) == mat.cols and basis_mat.rank() == mat.cols:
-            return restore_floats2(basis_mat, jordan_mat)
+        if len(jordan_basis) == mat.cols:
+            basis_mat = mat.hstack(*jordan_basis)
+            if basis_mat.rank() == mat.cols:
+                return restore_floats2(basis_mat, jordan_mat)
+
 
     block_structure = []
 
