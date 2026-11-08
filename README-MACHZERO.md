@@ -266,7 +266,74 @@ All checks passed!
 
 ---
 
-## 05. Presentation Prototype Suite & Multi-Workspace Access
+## 05. Comprehensive Deliverables Roster
+
+| Deliverable Artifact | Type & Path | Role & Verification Function |
+| :--- | :--- | :--- |
+| **`sympy/matrices/eigen.py`** | Core Engine Source | Main patched SymPy file implementing Defect M3-1 additive multiplicity accumulator (`_eigenvals_dict`), eigenvector simplification sync (`_eigenvects_sympy`), and Defect M3-2 zero-difference root merge + full-rank guard (`_jordan_form`). |
+| **`sympy/matrices/tests/test_eigen.py`** | Unit Test Suite | Official test file containing all 3 custom regression suites verifying multiplicity preservation, defective Jordan similarity, and monolithic spectrum edge cases. |
+| **`sympy/release.py` & `_version.py`** | Cloud Resilience | Eliminates shallow-clone `ImportError` exceptions on cloud runners (Streamlit Cloud, Docker, Colab) by providing static development fallback metadata. |
+| **`app_prototype.py`** | Live Interactive UI | Streamlit Web Inspector featuring real-time spectrum comparison, the shopping-cart iteration tracer, neon math operator celebration burst, and instant in-memory test runner (<25ms). |
+| **`MATCH_ZERO_LIVE_INSPECTOR.ipynb`** | 1-Click Cloud Notebook | Interactive Google Colab notebook executing the full verification pipeline in Google Cloud with 1 click (zero local setup required). |
+| **`verify_integration.py`** | Mainline Proof Script | Zero-dependency standalone Python verification script that introspects the loaded SymPy source, tests public APIs (`M.eigenvals(simplify=True)`, $\det(P) \neq 0$), and runs the test runner in <2 seconds. |
+| **`requirements.txt`** | Dependency Manifest | Clean, modular dependency specification separating core runtime, developer testing, and prototype visualization tools. |
+| **`INTEGRATION_PROOF.md`** | Architecture Dossier | Technical document demonstrating the exact dispatch call graph from public `MatrixBase` methods to our patched functions in `eigen.py`. |
+| **`README-MACHZERO.md`** | Central Team Log | Master team log tracking Rounds 1–3, mathematical contracts, semantic model definitions (`📦` vs `🚀`), and before/after code walkthroughs. |
+| **`MATCH_ZERO_TECHNICAL_ROUND_DOSSIER.md`** | Theoretical Dossier | Transcribed 6-page technical dossier covering the shopping-cart dictionary model, failure analysis, and mathematical defense. |
+| **`QUICKSTART.md`** | Evaluator Guide | 1-minute quickstart guide for competition judges and teammates. |
+| **`prototype_demo.py`** | Terminal CLI Prototype | Lightweight, standalone command-line demonstration for offline terminal environments. |
+| **`RUN_WEB_PROTOTYPE.bat`** | Windows Shortcut | 1-click desktop batch launcher for the Streamlit web dashboard. |
+| **`RUN_TERMINAL_DEMO.bat`** | Windows Shortcut | 1-click desktop batch launcher for the CLI terminal demonstration. |
+| **`match_zero_sympy_issue_30900.patch`** | Unified Git Patch | Standard unified Git patch allowing anyone to apply the complete fix to any clean SymPy checkout with `git apply`. |
+| **`MATCH_ZERO_SYMPY_SUBMISSION_BUNDLE.zip`** | Offline Archive | Self-contained 53.8 KB distribution zip bundle holding all above files for offline evaluation. |
+
+---
+
+## 06. Libraries, Packages & Environment Specifications
+
+The following table documents every third-party package, runtime dependency, and Python standard library module utilized during the engineering of this project:
+
+### 1. Third-Party Libraries & External Packages
+
+| Library / Tool | Installed Version | Scope | Purpose & Modules Utilized | Mandatory? |
+| :--- | :--- | :--- | :--- | :--- |
+| **`python`** | `3.14.0` (Tested $\ge 3.10$) | Core Runtime | Execution environment for the entire pure-Python SymPy computer algebra system. | **Yes** |
+| **`mpmath`** | `1.4.1` (Required $\ge 1.1.0$) | Core Runtime | SymPy's sole hard runtime dependency; provides arbitrary-precision floating-point arithmetic. | **Yes** |
+| **`sympy`** | `1.14.dev0+matchzero` | Core Kernel | The computer algebra system under fix; modules: `sympy.matrices`, `sympy.core`, `sympy.simplify`, `sympy.functions.elementary.trigonometric`. | **Yes** |
+| **`pytest`** | `9.0.1` (Required $\ge 7.4.0$) | Testing & CI | Official SymPy test runner; used for regression test execution, test discovery, and assertion evaluation. | Dev Only |
+| **`hypothesis`** | `6.80.0+` | Testing & CI | Property-based testing framework used in SymPy's matrix test suite. | Dev Only |
+| **`ruff`** | `0.1.0+` | Code Quality | High-speed static analysis and linting engine; verifies upstream SymPy code conventions (0 warnings). | Dev Only |
+| **`streamlit`** | `1.62.0` (Required $\ge 1.30.0$) | Presentation UI | Reactive web dashboard framework; powers the live inspector, custom CSS keyframe animations, and session state. | Prototype Only |
+| **`pandas`** | `2.3.3` (Required $\ge 2.0.0$) | Presentation UI | High-performance tabular data structures; powers the zero-scroll Quantitative Verification Table in Tab 1. | Prototype Only |
+
+### 2. Python Standard Library Modules Utilized
+
+| Standard Module | Purpose & Specific Implementation in Match Zero |
+| :--- | :--- |
+| **`os`** | Operating system interfaces; environment variable resolution and working directory isolation across platforms. |
+| **`re`** | Regular expressions engine; used in `normalize_math_expression()` for case-insensitive trigonometric input normalization (`Cosx`, `Cost`, `sin^2 x`, `1 - Cosx**2`). |
+| **`pathlib.Path`** | Object-oriented filesystem path resolution; ensures cross-platform path compatibility across Windows (`\`), Linux (`/`), Docker, and Streamlit Cloud. |
+| **`subprocess`** | Process management; powers the instant in-memory and subprocess Pytest runners, Git metadata inspection, and shallow clone detection. |
+| **`sys`** | System-specific parameters and runtime introspection; dynamically configures `sys.path` and handles terminal encoding (`sys.stdout.reconfigure(encoding="utf-8")`). |
+| **`time`** | High-resolution microsecond performance profiling via `time.perf_counter()` to benchmark test execution speeds (<25ms in Tab 4). |
+| **`random`** | Seed-based particle generator in `trigger_math_operator_burst()` to animate 70 floating neon math symbols with randomized trajectories and rotations. |
+| **`json`** | Data serialization; used for Jupyter notebook generation (`MATCH_ZERO_LIVE_INSPECTOR.ipynb`) and live dictionary state display (`st.json()`). |
+| **`zipfile` & `shutil`** | Automated compression engine; packages all project assets into `MATCH_ZERO_SYMPY_SUBMISSION_BUNDLE.zip`. |
+| **`types.FunctionType`** | Type introspection; allows `_eigenvals_dict` to detect custom user-supplied simplifier functions versus default `_simplify`. |
+
+### 3. Development, Hosting & Cloud Platform Infrastructure
+
+| Tool / Platform | Role & Usage in Match Zero Engineering |
+| :--- | :--- |
+| **Git (v2.x)** | Distributed version control; managed atomic feature branches, cherry-picks, and generated unified patch `match_zero_sympy_issue_30900.patch`. |
+| **GitHub** | Remote synchronization, upstream tracking, team collaboration with Arushi (`arushigarg2709-git/sympy`) and Yashas (`HowSo777/sympy`), and cloud deployment integration. |
+| **Streamlit Community Cloud** | Hosted Linux container environment serving the live web app at [match-zero-sympy-30900.streamlit.app](https://match-zero-sympy-30900.streamlit.app). |
+| **Google Colab** | Zero-install cloud Jupyter environment executing the complete verification pipeline with a single click. |
+| **Cross-Platform Shells** | Dual verification across Windows 11 (PowerShell / `py`) and Linux (Bash / `python3`). |
+
+---
+
+## 07. Multi-Workspace Access & Live Cloud Execution Links
 
 Judges can inspect and run the solution through multiple channels across any workspace (Cloud, Browser, or Local Terminal):
 
@@ -294,13 +361,13 @@ streamlit run app_prototype.py
 ```
 *(In GitHub Codespaces / VS Code Remote, port 8501 is automatically forwarded to a private HTTPS preview link).*
 
-### ⚡ 3. Zero-Dependency Terminal Verification Script (<2 seconds)
+### ⚡ 4. Zero-Dependency Terminal Verification Script (<2 seconds)
 For an instantaneous verification that tests public APIs and test suites:
 ```bash
 python verify_integration.py
 ```
 
-### 🖥️ 4. Interactive Web Inspector Features (`app_prototype.py`)
+### 🖥️ 5. Interactive Web Inspector Features (`app_prototype.py`)
 - **Title:** `🧮 SymPy Issue #30900 · Missing Eigenvalue Fix`
 - **Features:**
   - Top 4-KPI Scoreboard (Dimension, Legacy Model Loss, Upgraded Model Recovery, Contract Status).
@@ -311,5 +378,5 @@ python verify_integration.py
   - Zero horizontal scrolling: Compact table formatting in Tab 1 and stacked Visual Iteration Cards in Tab 2.
   - Instant In-Memory Test Runner (<25ms) in Tab 4.
 
-### 📟 5. Automated Terminal CLI Demonstration (`prototype_demo.py`)
+### 📟 6. Automated Terminal CLI Demonstration (`prototype_demo.py`)
 - **Launch Command:** `python prototype_demo.py` or double-click `RUN_TERMINAL_DEMO.bat`.
