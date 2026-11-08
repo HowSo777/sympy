@@ -15,6 +15,14 @@ REPO_PATH = Path(__file__).resolve().parent
 if str(REPO_PATH) not in sys.path:
     sys.path.insert(0, str(REPO_PATH))
 
+# Ensure sympy._version exists for shallow cloud checkouts (Streamlit Cloud, Colab)
+version_file = REPO_PATH / "sympy" / "_version.py"
+if not version_file.exists():
+    try:
+        version_file.write_text('__version__ = "1.14.dev0"\n__commit_id__ = "96719e3"\n', encoding="utf-8")
+    except Exception:
+        pass
+
 import sympy as sp
 from sympy import Matrix, Symbol, cos, latex, sec, simplify, sin, tan, trigsimp
 from sympy.matrices.eigen import _iszero
