@@ -323,7 +323,11 @@ def _eigenvals_dict(
         return all_eigs
     if not isinstance(simplify, FunctionType):
         simplify = _simplify
-    return {simplify(key): value for key, value in all_eigs.items()}
+    res: dict[Expr, int] = {}
+    for key, value in all_eigs.items():
+        skey = simplify(key)
+        res[skey] = res.get(skey, 0) + value
+    return res
 
 
 def _eigenspace(
@@ -366,7 +370,7 @@ def _eigenvects_sympy(
         simplify: bool | Callable[[Expr], Expr] = True,
         **flags: Any,
     ) -> list[tuple[Expr, int, list[Tmat]]]:
-    eigenvals = M.eigenvals(rational=False, **flags)
+    eigenvals = M.eigenvals(rational=False, simplify=simplify, **flags)
 
     # Make sure that we have all roots in radical form
     for x in eigenvals:
@@ -1275,6 +1279,15 @@ def _jordan_form(M: Tmat,
 
     # first calculate the jordan block structure
     eigs = mat.eigenvals()
+    merged_eigs: dict[Expr, int] = {}
+    for eigenvalue, multiplicity in eigs.items():
+        for existing in merged_eigs:
+            if _iszero(_simplify(eigenvalue - existing)) is True:
+                merged_eigs[existing] += multiplicity
+                break
+        else:
+            merged_eigs[eigenvalue] = multiplicity
+    eigs = merged_eigs
 
     # Make sure that we have all roots in radical form
     for x in eigs:
@@ -1293,11 +1306,16 @@ def _jordan_form(M: Tmat,
         if not calc_transform:
             return restore_floats1(jordan_mat)
 
-        jordan_basis = [eig_mat(eig, 1).nullspace()[0]
-                for eig in blocks]
-        basis_mat    = mat.hstack(*jordan_basis)
+        jordan_basis = []
+        for eig in blocks:
+            basis = eig_mat(eig, 1).nullspace()
+            if basis:
+                jordan_basis.append(basis[0])
 
-        return restore_floats2(basis_mat, jordan_mat)
+        if len(jordan_basis) == mat.cols:
+            basis_mat = mat.hstack(*jordan_basis)
+            if basis_mat.rank() == mat.cols:
+                return restore_floats2(basis_mat, jordan_mat)
 
     block_structure = []
 

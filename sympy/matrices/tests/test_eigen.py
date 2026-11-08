@@ -807,3 +807,47 @@ def test_issue_28793():
     P, J = A.jordan_form()
     assert P.det() == 16*sqrt(2)
     assert expand(P*J*P.inv()) == expand(A)
+
+
+def test_eigenvals_simplification_preserves_multiplicity():
+    x = Symbol("x")
+    a = sin(x)**2
+    matrix = Matrix.diag(a, a, 1 - cos(x)**2, 7)
+    assert matrix.eigenvals(simplify=True) == {sin(x)**2: 3, S(7): 1}
+    assert len(matrix.eigenvals(simplify=True, multiple=True)) == 4
+    values = matrix.eigenvals(simplify=True, multiple=True)
+    assert values.count(sin(x)**2) == 3
+    assert values.count(S(7)) == 1
+
+
+def test_eigenvals_simplify_multiplicity_and_jordan():
+    x = Symbol('x')
+    M_diag = Matrix([[sin(x)**2, 0], [0, 1 - cos(x)**2]])
+    assert M_diag.eigenvals(simplify=True) == {sin(x)**2: 2}
+    assert len(M_diag.eigenvals(simplify=True, multiple=True)) == 2
+
+    M_jordan = Matrix([[sin(x)**2, 1], [0, 1 - cos(x)**2]])
+    assert M_jordan.is_diagonalizable() is False
+    P, J = M_jordan.jordan_form()
+    assert simplify(P.det()) != 0
+    assert simplify(M_jordan * P - P * J) == Matrix.zeros(2, 2)
+    assert M_jordan.jordan_form(calc_transform=False) == J
+
+
+def test_eigenvals_simplify_edge_cases():
+    x = Symbol('x')
+    e1, e2, e3 = sin(x)**2, 1 - cos(x)**2, (1 - cos(2*x))/2
+
+    M_mono = Matrix.diag(e1, e2, e3, e1)
+    assert M_mono.eigenvals(simplify=True) == {sin(x)**2: 4}
+    assert len(M_mono.eigenvals(simplify=True, multiple=True)) == 4
+
+    M_jordan3 = Matrix([[e1, 1, 0], [0, e2, 1], [0, 0, e3]])
+    assert M_jordan3.is_diagonalizable() is False
+    P3, J3 = M_jordan3.jordan_form()
+    assert simplify(P3.det()) != 0
+    assert simplify(M_jordan3 * P3 - P3 * J3) == Matrix.zeros(3, 3)
+    assert M_jordan3.jordan_form(calc_transform=False) == J3
+
+    M_1x1 = Matrix([[e2]])
+    assert M_1x1.eigenvals(simplify=True) == {sin(x)**2: 1}

@@ -1,128 +1,272 @@
-# Match Zero · SymPy team log
+# Match Zero - SymPy multiplicity and Jordan form fix
 
-**Project:** Preserve eigenvalue multiplicities during simplification and fix Jordan normal form for equivalent eigenvalues.  
-**Shared fork:** [arushigarg2709-git/sympy](https://github.com/arushigarg2709-git/sympy)  
-**Reported defect:** [SymPy #30900, items M3-1 & M3-2](https://github.com/sympy/sympy/issues/30900)  
-**Last documented:** 7 November 2026, Round 3. All verifications and regression tests passed.
+Team 6 - Saya
 
----
+Fork: [arushigarg2709-git/sympy](https://github.com/arushigarg2709-git/sympy)
 
-## Round 1 · Choosing one problem
+Reported problem: [SymPy issue 30900, M3-1 and M3-2](https://github.com/sympy/sympy/issues/30900)
 
-We compared a LangChain contribution with SymPy’s matrix audit. The audit offered several reproducible examples, but some share causes and some contributors were already working on individual items. We first explored a companion-matrix transpose crash. The transpose fix worked, but testing multiplication exposed a separate symbolic-indexing error. We chose M3-1 because a diagonal matrix lets anyone verify the expected answer by inspection.
+## Review status - 8 November 2026
 
-Our contribution is the reproduction, fix, and regression test for one previously reported defect.
+This version was checked against the fork's public `master` snapshot
+`c4479573f6779ce3af7f73536f5b9045225e7a0b`.
+At review time, only `master` was publicly available. The previously documented
+fix branches and local commit IDs have not been verified as published.
+This README does not claim a live deployment or an upstream pull request.
 
----
+## 1. The problem
 
-## Round 2 · Reproducing the failure
+An eigenvalue's multiplicity is the number of times it occurs.
+For `diag(sin(x)**2, sin(x)**2, 1 - cos(x)**2, 7)`, the expected answer is
+`{sin(x)**2: 3, 7: 1}` because `1 - cos(x)**2 = sin(x)**2`.
+The original code replaces a previous count when two expressions simplify
+to the same dictionary key. The total count can therefore become too small.
 
-Run this from the repository root using the development environment:
+When all eigenvalues are returned, their algebraic multiplicities must sum
+to the matrix dimension. A valid Jordan decomposition also needs an
+invertible basis `P` satisfying `M * P = P * J`.
+
+## 2. Wrong code before running
+
+Original code in `_eigenvals_dict`:
 
 ```python
-from sympy import Matrix, Symbol, cos, sin
-
-x = Symbol("x")
-a = sin(x)**2
-matrix = Matrix.diag(a, a, 1 - cos(x)**2, 7)
-print(matrix.eigenvals(simplify=True))
+return {simplify(key): value for key, value in all_eigs.items()}
 ```
 
-| Eigenvalue | Expected count | Original | Patched |
-| --- | ---: | ---: | ---: |
-| sin²(x) | 3 | 1 | 3 |
-| 7 | 1 | 1 | 1 |
+The same operation written as a simple loop:
 
-The diagonal entries are the eigenvalues. The identity $1 − \cos^2(x) = \sin^2(x)$ means three entries represent the same value. The original output looked plausible until we compared its counts with the diagonal.
+```python
+result = {}
+for key, value in all_eigs.items():
+    result[simplify(key)] = value
+```
 
-### Code path and design decision
+Assigning to the same key again replaces its previous count.
 
-1. The public method lives in [matrixbase.py](file:///C:/Users/hp/.gemini/antigravity/scratch/sympy/sympy/matrices/matrixbase.py). It delegates the computation to [eigen.py](file:///C:/Users/hp/.gemini/antigravity/scratch/sympy/sympy/matrices/eigen.py).
-2. In the failing path, the solver has already found the roots and their multiplicities. Two differently written expressions become the same dictionary key after simplification.
-3. The final dictionary comprehension overwrote the first count. We changed the aggregation in `_eigenvals_dict` to add each multiplicity to the running total for its simplified key. This addresses the failure at the point where information was lost.
-4. The dictionary and repeated-list outputs use the corrected counts. Jordan form and downstream machine-learning pipelines were outside this validation.
+## 3. Correct code
 
-### Evidence and challenges
+```python
+res: dict[Expr, int] = {}
+for key, value in all_eigs.items():
+    skey = simplify(key)
+    res[skey] = res.get(skey, 0) + value
+return res
+```
 
-| What happened | What we learned or changed |
+`res.get(skey, 0)` reads the count already stored, or zero for a new key.
+The incoming count is added to it. The example now retains three copies
+of `sin(x)**2` and one copy of `7`.
+
+## 4. Eigenvectors and Jordan form
+
+The patch also passes the requested `simplify` setting from
+`_eigenvects_sympy` to `M.eigenvals`.
+
+For Jordan form, it merges eigenvalue keys only when simplifying their
+difference gives a confirmed zero. It retains an existing representative
+instead of replacing every root expression with a new simplified form.
+
+The actual fast path in this source is:
+
+```python
+if len(eigs.keys()) == mat.cols:
+```
+
+The earlier dossier's `len(blocks) == mat.cols` example did not match this
+source and should not be presented as the exact implementation.
+The reviewed patch checks basis length before constructing the basis matrix,
+then checks full rank before returning the fast-path result. If the basis
+is unsuitable, normal Jordan-chain construction continues.
+
+Symbolic simplification is heuristic. These changes and tests do not establish
+that every possible pair of equivalent symbolic expressions can be detected.
+
+## 5. Verified results
+
+Environment: Python 3.14, fork source snapshot listed above.
+The GitHub archive has no Git version metadata. An isolated local `_version.py`
+was supplied for testing only and is not part of this upload or patch.
+
+| Check | Result |
 | --- | --- |
-| The downloaded source archive lacked Git version metadata. | We set up a full clone and fetched the upstream release tags so the development version could be identified. |
-| The clean eigenvalue test module passed despite the bug. | We added a case with unequal counts that merge, plus a separate eigenvalue whose count must stay at one. |
-| The new test failed on the original implementation. | It reported one occurrence where three were expected. After the change, dictionary and repeated-list checks passed. |
-| The focused suite passed on the patched clone. | 20 passed, 1 expected failure, 3 deselected. Ruff passed on both changed files. |
-| GitHub rejected an HTTPS push using password authentication. | The fix was committed locally. Verify the remote branch before recording publication or a PR. |
+| Three added tests on original fork code | 3 failed, 23 deselected |
+| Full eigenvalue test module after changes | 22 passed, 3 deselected, 1 xfailed |
+| `python bin/test quality` | 6 passed, 1 deselected |
+| `ruff check sympy` | All checks passed |
+| Presentation app | Three spectrum examples and Jordan reference passed |
 
-**Local implementation:** branch `fix/eigenvals-missing-multiplicity-jordan`, commit `6672955`.
+The module tests cover dictionary and repeated-list multiplicities, equivalent
+roots, diagonalizability, invertible Jordan bases, the similarity identity,
+`calc_transform=False`, a 3 by 3 Jordan block, and a 1 by 1 boundary case.
+Repeated-list tests check counts without assuming list ordering.
 
-### Repeat the checks
-
-From an activated development environment on the fix branch:
+Run these commands from a full Git clone after applying the patch:
 
 ```sh
-python -m pytest -q sympy/matrices/tests/test_eigen.py -k simplification_preserves_multiplicity
+python -m pip install -e .
+python -m pip install pytest hypothesis ruff
 python -m pytest -q sympy/matrices/tests/test_eigen.py
-ruff check sympy/matrices/eigen.py sympy/matrices/tests/test_eigen.py
+python bin/test quality
+ruff check sympy
 ```
 
----
+## 6. Run the presentation in VS Code
 
-## Round 3 · Append as work happens
+Open the repository folder in VS Code and run:
 
-### Entry 1: Extension to M3-2 (Jordan Normal Form Defect) & Comprehensive Multiplicity Verification
-- **Date:** 7 November 2026, 16:50 IST
-- **Contributors:** Match Zero Team
-- **Questions Tested:**
-  1. Does `_eigenvals_dict` correctly preserve cumulative algebraic multiplicity when unsimplified roots collapse upon simplification (e.g., $\sin^2(x)$ and $1-\cos^2(x)$)?
-  2. Does downstream Jordan normal form (`M.jordan_form()`) and diagonalizability check (`M.is_diagonalizable()`) produce valid results when eigenvalues are algebraically equivalent before simplification?
-- **Root Cause & Mathematical Analysis:**
-  - **M3-1**: In `sympy/matrices/eigen.py::_eigenvals_dict`, the return expression was `{simplify(key): value for key, value in all_eigs.items()}`. When distinct unsimplified root representations (such as $\sin^2(x)$ and $1 - \cos^2(x)$) simplify to identical expressions, the dictionary comprehension clobbered prior keys instead of summing multiplicities, causing lost eigenvalues and broken trace/dimension identities.
-  - **M3-2**: In `sympy/matrices/eigen.py::_jordan_form`, the solver assumed that having $n$ keys in `mat.eigenvals()` implied $n$ distinct eigenvalues, taking a fast path that computed nullspaces individually. When roots were symbolically unsimplified equivalents, this fast path selected duplicate eigenvectors, generating a singular transformation matrix $P$ with $\det(P) = 0$.
-- **Implementation & Patches Applied:**
-  1. In `sympy/matrices/eigen.py::_eigenvals_dict`:
-     Replaced overwriting dictionary comprehension with an accumulation loop:
-     ```python
-     res: dict[Expr, int] = {}
-     for key, value in all_eigs.items():
-         skey = simplify(key)
-         res[skey] = res.get(skey, 0) + value
-     return res
-     ```
-  2. In `sympy/matrices/eigen.py::_eigenvects_sympy`:
-     Passed `simplify=simplify` to `M.eigenvals(rational=False, simplify=simplify, **flags)` so eigenvector nullspace calculations respect simplified eigenvalue representations.
-  3. In `sympy/matrices/eigen.py::_jordan_form`:
-     - Added equivalence merging for eigenvalues in `_jordan_form` when `_iszero(_simplify(k - mk))` holds, combining multiplicities without changing distinct symbolic representations.
-     - Added rank-deficiency guard `if len(jordan_basis) == mat.cols and basis_mat.rank() == mat.cols:` to ensure the fast path only completes when $P$ is full rank and invertible.
-  4. In `sympy/matrices/tests/test_eigen.py`:
-     - Added `test_eigenvals_simplification_preserves_multiplicity` matching the exact Round 2 test case (`Matrix.diag(a, a, 1 - cos(x)**2, 7)`).
-     - Added `test_eigenvals_simplify_multiplicity_and_jordan` testing `is_diagonalizable() is False`, $\det(P) \neq 0$, and $M P = P J$.
+```sh
+python -m pip install -r demo/requirements.txt
+python -m streamlit run demo/app.py
+```
 
-### Verification & Test Suite Execution
-- **Filtered Pytest Check:**
-  ```sh
-  python -m pytest -q sympy/matrices/tests/test_eigen.py -k simplification_preserves_multiplicity
-  # Output: 1 passed, 24 deselected in 1.21s
-  ```
-- **Full Module Pytest Check:**
-  ```sh
-  python -m pytest -q sympy/matrices/tests/test_eigen.py
-  # Output: 21 passed, 3 deselected, 1 xfailed in 19.41s
-  ```
-- **Linter Check:**
-  ```sh
-  ruff check sympy/matrices/eigen.py sympy/matrices/tests/test_eigen.py
-  # Output: All checks passed!
-  ```
+The app displays wrong and correct code before running and again after the
+results. It has plain labels, a Run button, a blue background, and falling
+balloons. Its aggregation demo runs both functions on raw eigenvalues.
+Its Jordan panel is an analytical reference for one example; it is not a
+claim that a published library patch is installed.
 
-### Git & Submission Details
-- **Local Branch:** `fix/eigenvals-missing-multiplicity-jordan` (with alias `fix/eigenvalue-multiplicity`)
-- **Commit SHA:** `66729551769f968b2b53593fddc06fa79f078d58`
-- **Commit Message:** `fix(matrices): preserve eigenvalue multiplicity on simplification and fix Jordan form for equivalent eigenvalues`
-- **Fork Remote Configured:** `https://github.com/arushigarg2709-git/sympy.git`
-- **Push Command:**
-  ```sh
-  git push fork fix/eigenvals-missing-multiplicity-jordan
-  # or
-  git push fork fix/eigenvalue-multiplicity
-  ```
-- **Limitations & Future Work:**
-  Pairwise simplification of eigenvalue differences (`_iszero(_simplify(k - mk))`) handles equivalent symbolic roots cleanly without mutating exact algebraic forms needed by `test_issue_19210`. Full general non-zero testing on arbitrary transcendental constants remains subject to SymPy's `simplify`/`is_zero` heuristics.
+## 7. Deployment
+
+To deploy with Streamlit Community Cloud, first publish `demo/app.py` and
+`demo/requirements.txt` on the chosen branch of this fork. Create a Streamlit
+app using that repository, branch, and entry point `demo/app.py`.
+Record the actual hosted URL here after deployment succeeds.
+
+Deployment status: not yet deployed.
+
+## 8. Final explanation for judges
+
+Before: simplifying keys can overwrite an existing count.
+After: simplifying keys adds the counts, preserving multiplicity in the tests.
+For Jordan form, equivalent roots are merged and the fast-path basis is checked
+before it is returned.
+
+The exact reviewed changes follow. Save this as documentation, but apply the
+patch to the actual source files as well; a README alone does not change SymPy.
+
+## 9. Exact reviewed patch
+
+```diff
+diff --git a/sympy/matrices/eigen.py b/sympy/matrices/eigen.py
+--- a/sympy/matrices/eigen.py
++++ b/sympy/matrices/eigen.py
+@@ -323,7 +323,11 @@
+         return all_eigs
+     if not isinstance(simplify, FunctionType):
+         simplify = _simplify
+-    return {simplify(key): value for key, value in all_eigs.items()}
++    res: dict[Expr, int] = {}
++    for key, value in all_eigs.items():
++        skey = simplify(key)
++        res[skey] = res.get(skey, 0) + value
++    return res
+ 
+ 
+ def _eigenspace(
+@@ -366,7 +370,7 @@
+         simplify: bool | Callable[[Expr], Expr] = True,
+         **flags: Any,
+     ) -> list[tuple[Expr, int, list[Tmat]]]:
+-    eigenvals = M.eigenvals(rational=False, **flags)
++    eigenvals = M.eigenvals(rational=False, simplify=simplify, **flags)
+ 
+     # Make sure that we have all roots in radical form
+     for x in eigenvals:
+@@ -1275,6 +1279,15 @@
+ 
+     # first calculate the jordan block structure
+     eigs = mat.eigenvals()
++    merged_eigs: dict[Expr, int] = {}
++    for eigenvalue, multiplicity in eigs.items():
++        for existing in merged_eigs:
++            if _iszero(_simplify(eigenvalue - existing)) is True:
++                merged_eigs[existing] += multiplicity
++                break
++        else:
++            merged_eigs[eigenvalue] = multiplicity
++    eigs = merged_eigs
+ 
+     # Make sure that we have all roots in radical form
+     for x in eigs:
+@@ -1293,11 +1306,16 @@
+         if not calc_transform:
+             return restore_floats1(jordan_mat)
+ 
+-        jordan_basis = [eig_mat(eig, 1).nullspace()[0]
+-                for eig in blocks]
+-        basis_mat    = mat.hstack(*jordan_basis)
+-
+-        return restore_floats2(basis_mat, jordan_mat)
++        jordan_basis = []
++        for eig in blocks:
++            basis = eig_mat(eig, 1).nullspace()
++            if basis:
++                jordan_basis.append(basis[0])
++
++        if len(jordan_basis) == mat.cols:
++            basis_mat = mat.hstack(*jordan_basis)
++            if basis_mat.rank() == mat.cols:
++                return restore_floats2(basis_mat, jordan_mat)
+ 
+     block_structure = []
+ 
+diff --git a/sympy/matrices/tests/test_eigen.py b/sympy/matrices/tests/test_eigen.py
+--- a/sympy/matrices/tests/test_eigen.py
++++ b/sympy/matrices/tests/test_eigen.py
+@@ -807,3 +807,47 @@
+     P, J = A.jordan_form()
+     assert P.det() == 16*sqrt(2)
+     assert expand(P*J*P.inv()) == expand(A)
++
++
++def test_eigenvals_simplification_preserves_multiplicity():
++    x = Symbol("x")
++    a = sin(x)**2
++    matrix = Matrix.diag(a, a, 1 - cos(x)**2, 7)
++    assert matrix.eigenvals(simplify=True) == {sin(x)**2: 3, S(7): 1}
++    assert len(matrix.eigenvals(simplify=True, multiple=True)) == 4
++    values = matrix.eigenvals(simplify=True, multiple=True)
++    assert values.count(sin(x)**2) == 3
++    assert values.count(S(7)) == 1
++
++
++def test_eigenvals_simplify_multiplicity_and_jordan():
++    x = Symbol('x')
++    M_diag = Matrix([[sin(x)**2, 0], [0, 1 - cos(x)**2]])
++    assert M_diag.eigenvals(simplify=True) == {sin(x)**2: 2}
++    assert len(M_diag.eigenvals(simplify=True, multiple=True)) == 2
++
++    M_jordan = Matrix([[sin(x)**2, 1], [0, 1 - cos(x)**2]])
++    assert M_jordan.is_diagonalizable() is False
++    P, J = M_jordan.jordan_form()
++    assert simplify(P.det()) != 0
++    assert simplify(M_jordan * P - P * J) == Matrix.zeros(2, 2)
++    assert M_jordan.jordan_form(calc_transform=False) == J
++
++
++def test_eigenvals_simplify_edge_cases():
++    x = Symbol('x')
++    e1, e2, e3 = sin(x)**2, 1 - cos(x)**2, (1 - cos(2*x))/2
++
++    M_mono = Matrix.diag(e1, e2, e3, e1)
++    assert M_mono.eigenvals(simplify=True) == {sin(x)**2: 4}
++    assert len(M_mono.eigenvals(simplify=True, multiple=True)) == 4
++
++    M_jordan3 = Matrix([[e1, 1, 0], [0, e2, 1], [0, 0, e3]])
++    assert M_jordan3.is_diagonalizable() is False
++    P3, J3 = M_jordan3.jordan_form()
++    assert simplify(P3.det()) != 0
++    assert simplify(M_jordan3 * P3 - P3 * J3) == Matrix.zeros(3, 3)
++    assert M_jordan3.jordan_form(calc_transform=False) == J3
++
++    M_1x1 = Matrix([[e2]])
++    assert M_1x1.eigenvals(simplify=True) == {sin(x)**2: 1}
+```
+
+## Authorship and review
+
+The supplied submission was reviewed and revised with OpenAI Codex (GPT-6).
+The revised source, tests, presentation app, and this README require the
+maintainer's human review before an upstream submission. No upstream PR was
+opened by this review.
