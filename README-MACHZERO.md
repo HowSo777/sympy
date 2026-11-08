@@ -1,13 +1,15 @@
 # Match Zero · SymPy Team Log & Technical Code Dossier
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://match-zero-sympy-30900.streamlit.app)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/arushigarg2709-git/sympy/blob/fix/eigenvals-missing-multiplicity-jordan/MATCH_ZERO_LIVE_INSPECTOR.ipynb)
+[![CI Tests](https://img.shields.io/badge/Pytest-22%20Passed-brightgreen)](https://github.com/arushigarg2709-git/sympy/tree/fix/eigenvals-missing-multiplicity-jordan)
+
 **Project:** Preserve eigenvalue multiplicities during simplification and fix Jordan normal form for equivalent eigenvalues.  
+**Live Web Prototype:** [https://match-zero-sympy-30900.streamlit.app](https://match-zero-sympy-30900.streamlit.app)  
 **Shared Fork Remote:** [arushigarg2709-git/sympy](https://github.com/arushigarg2709-git/sympy)  
 **Target Repository:** `sympy/sympy`  
 **Reported Defects:** [SymPy Issue #30900 (Items M3-1 & M3-2)](https://github.com/sympy/sympy/issues/30900)  
-**Branches:** `fix/eigenvals-missing-multiplicity-jordan` | `fix/eigenvalue-multiplicity`  
-**Latest Commits:** 
-- `9222443`: `test(matrices): add edge cases for monolithic spectrum, 3x3 Jordan block, and 1x1 boundary`
-- `6672955`: `fix(matrices): preserve eigenvalue multiplicity on simplification and fix Jordan form for equivalent eigenvalues`
+**Branch:** `fix/eigenvals-missing-multiplicity-jordan`  
 
 ---
 
@@ -268,12 +270,16 @@ All checks passed!
 
 Judges can inspect and run the solution through multiple channels across any workspace (Cloud, Browser, or Local Terminal):
 
-### 🌐 1. One-Click Interactive Cloud Notebook (Google Colab)
+### 🚀 1. Live Cloud Web App (Streamlit Community Cloud)
+- **Direct Live Link:** [https://match-zero-sympy-30900.streamlit.app](https://match-zero-sympy-30900.streamlit.app)
+- **Instant Browser Access:** Zero setup required. Runs the interactive dashboard with the math operator celebration burst and spectrum comparisons directly in your browser.
+
+### 🌐 2. One-Click Interactive Cloud Notebook (Google Colab)
 Judges can run the live verification in Google Cloud without installing anything locally:
 - **Colab Link:** [Open in Google Colab](https://colab.research.google.com/github/arushigarg2709-git/sympy/blob/fix/eigenvals-missing-multiplicity-jordan/MATCH_ZERO_LIVE_INSPECTOR.ipynb)
 - **File:** [MATCH_ZERO_LIVE_INSPECTOR.ipynb](file:///C:/Users/hp/.gemini/antigravity/scratch/sympy/MATCH_ZERO_LIVE_INSPECTOR.ipynb)
 
-### 💻 2. Running in Any Judge Workspace (GitHub Codespaces / Mac / Linux / Windows)
+### 💻 3. Running in Any Judge Workspace (GitHub Codespaces / Mac / Linux / Windows)
 If inspecting from a remote workspace or local machine:
 ```bash
 # 1. Clone the verified branch

@@ -11,8 +11,8 @@ import pandas as pd
 import streamlit as st
 
 # Prioritize local patched SymPy clone if available
-REPO_PATH = Path(r"C:\Users\hp\.gemini\antigravity\scratch\sympy")
-if REPO_PATH.exists() and str(REPO_PATH) not in sys.path:
+REPO_PATH = Path(__file__).resolve().parent
+if str(REPO_PATH) not in sys.path:
     sys.path.insert(0, str(REPO_PATH))
 
 import sympy as sp
